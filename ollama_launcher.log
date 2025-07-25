@@ -1,0 +1,11 @@
+[周六 2025/07/19 20:01:10.53] Starting AI Assistant 
+Project root: C:\Users\xu106\Desktop\ollama-ai-assistant\scripts\.. 
+[周六 2025/07/19 20:01:10.55] Clearing ports 
+Killed process PID: 1608 (port 11435
+Killed process PID: 1608 (port 11435
+[周六 2025/07/19 20:01:13.13] Starting Ollama service 
+Ollama service already running 
+[周六 2025/07/19 20:01:13.36] Waiting for Ollama 
+[周六 2025/07/19 20:01:18.29] Configuring firewall 
+[周六 2025/07/19 20:01:18.63] Starting web service 
+[周六 2025/07/19 20:01:18.80] Opening browser 

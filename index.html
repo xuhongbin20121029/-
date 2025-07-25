@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI编程助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .header { background: #4a6fa5; color: white; padding: 15px; border-radius: 8px; text-align: center; }
+        .access-info, .diagnostic-info { background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .input-area { display: flex; margin-top: 20px; }
+        #user-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 15px; background: #4a6fa5; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .user { background: #e3f2fd; text-align: right; }
+        .assistant { background: #f1f8e9; }
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .connected { background: green; }
+        .disconnected { background: red; }
+        #qrcode { margin: 10px auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI编程助手</h1>
+            <p>本地运行 | DeepSeek-Coder模型</p>
+        </div>
+        
+        <div>
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">检查服务状态...</span>
+        </div>
+        
+        <div class="access-info">
+            <h3>访问方式</h3>
+            <p>本地: <a href="http://localhost:8000">http://localhost:8000</a></p>
+            <p>局域网: <a href="#" id="local-ip-link">加载中...</a></p>
+            <p>外网: <a href="#" id="public-ip-link">加载中...</a></p>
+            
+            <div id="qrcode-container">
+                <div id="qrcode"></div>
+                <p>手机扫描二维码访问</p>
+            </div>
+        </div>
+        
+        <div class="diagnostic-info">
+            <h3>网络诊断</h3>
+            <p>路由器IP: <span id="router-ip">-</span></p>
+            <p>公网IP: <span id="public-ip">-</span></p>
+            <p>端口状态: 
+                <span id="port-8000">检测中...</span> (8000),
+                <span id="port-11435">检测中...</span> (11435)
+            </p>
+            <div id="port-help" style="display:none; background:#ffebee; padding:10px; border-radius:4px;">
+                <p><strong>端口未开放解决方案:</strong></p>
+                <ol>
+                    <li>确认路由器端口转发设置</li>
+                    <li>检查Windows防火墙设置</li>
+                    <li>尝试启用路由器的DMZ主机功能</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div id="message-container">
+            <div class="message assistant">
+                <strong>AI:</strong> 你好！我是本地AI助手，有什么问题我可以帮您解决？
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="输入编程问题..." autocomplete="off">
+            <button id="send-btn">发送</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            const localIpLink = document.getElementById('local-ip-link');
+            const publicIpLink = document.getElementById('public-ip-link');
+            const qrcodeElement = document.getElementById('qrcode');
+            const port8000 = document.getElementById('port-8000');
+            const port11435 = document.getElementById('port-11435');
+            const portHelp = document.getElementById('port-help');
+            const messageContainer = document.getElementById('message-container');
+            const userInput = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            
+            // 检查服务状态
+            async function checkStatus() {
+                try {
+                    const response = await fetch('/status');
+                    const data = await response.json();
+                    if(data.status === 'running') {
+                        statusDot.className = 'status-dot connected';
+                        statusText.textContent = '服务运行正常';
+                    } else {
+                        statusDot.className = 'status-dot disconnected';
+                        statusText.textContent = '服务未运行';
+                    }
+                } catch {
+                    statusDot.className = 'status-dot disconnected';
+                    statusText.textContent = '连接失败';
+                }
+            }
+            
+            // 获取IP地址
+            async function getIPs() {
+                try {
+                    // 获取本地IP
+                    const localRes = await fetch('/local-ip');
+                    const localData = await localRes.json();
+                    if(localData.ip) {
+                        localIpLink.textContent = `http://${localData.ip}:8000`;
+                        localIpLink.href = `http://${localData.ip}:8000`;
+                        document.getElementById('router-ip').textContent = localData.ip;
+                    }
+                    
+                    // 获取公网IP
+                    const publicRes = await fetch('/public-ip');
+                    const publicData = await publicRes.json();
+                    if(publicData.ip) {
+                        publicIpLink.textContent = `http://${publicData.ip}:8000`;
+                        publicIpLink.href = `http://${publicData.ip}:8000`;
+                        document.getElementById('public-ip').textContent = publicData.ip;
+                        
+                        // 生成二维码
+                        try {
+                            qrcodeElement.innerHTML = '';
+                            new QRCode(qrcodeElement, {
+                                text: `http://${publicData.ip}:8000`,
+                                width: 128,
+                                height: 128
+                            });
+                        } catch {
+                            qrcodeElement.innerHTML = '<p>二维码生成失败</p>';
+                        }
+                    }
+                } catch(e) {
+                    console.error('获取IP失败:', e);
+                }
+            }
+            
+            // 检查端口状态
+            async function checkPorts() {
+                try {
+                    const response = await fetch('/port-status');
+                    const data = await response.json();
+                    
+                    port8000.textContent = data.port_8000 === 'open' ? '开放 ✅' : '关闭 ❌';
+                    port11435.textContent = data.port_11435 === 'open' ? '开放 ✅' : '关闭 ❌';
+                    
+                    if(data.port_8000 !== 'open' || data.port_11435 !== 'open') {
+                        portHelp.style.display = 'block';
+                    }
+                } catch(e) {
+                    port8000.textContent = '检测失败';
+                    port11435.textContent = '检测失败';
+                    portHelp.style.display = 'block';
+                }
+            }
+            
+            // 发送消息
+            async function sendMessage() {
+                const message = userInput.value.trim();
+                if(!message) return;
+                
+                // 添加用户消息
+                const userMsg = document.createElement('div');
+                userMsg.className = 'message user';
+                userMsg.innerHTML = `<strong>你:</strong> ${message}`;
+                messageContainer.appendChild(userMsg);
+                
+                // 添加AI思考中消息
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'message assistant';
+                aiMsg.innerHTML = `<strong>AI:</strong> 思考中...`;
+                messageContainer.appendChild(aiMsg);
+                
+                userInput.value = '';
+                userInput.disabled = true;
+                sendBtn.disabled = true;
+                
+                try {
+                    // 发送到后端
+                    const response = await fetch('/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question: message })
+                    });
+                    
+                    const data = await response.json();
+                    aiMsg.innerHTML = `<strong>AI:</strong> ${data.answer}`;
+                } catch(e) {
+                    aiMsg.innerHTML = `<strong>AI:</strong> 请求失败: ${e.message}`;
+                } finally {
+                    userInput.disabled = false;
+                    sendBtn.disabled = false;
+                    userInput.focus();
+                }
+            }
+            
+            // 初始化
+            async function init() {
+                await checkStatus();
+                await getIPs();
+                await checkPorts();
+                
+                // 每30秒更新一次状态
+                setInterval(checkStatus, 30000);
+                setInterval(checkPorts, 60000);
+            }
+            
+            // 事件监听
+            sendBtn.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if(e.key === 'Enter') sendMessage();
+            });
+            
+            init();
+        });
+    </script>
+</body>
+</html>

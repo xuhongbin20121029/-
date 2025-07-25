@@ -1,2 +1,25 @@
-# -
-Config files for my GitHub profile.
+# Ollama AI 助手
+
+本地运行的AI编程助手，使用Ollama和DeepSeek-Coder模型，支持远程访问和智能诊断。
+
+## 功能特点
+
+- **一键启动**：通过批处理脚本快速启动所有服务
+- **自我修复**：自动检测并修复常见问题
+- **远程访问**：支持公网访问和二维码分享
+- **智能诊断**：实时监控网络状态和服务健康
+- **本地运行**：所有数据处理均在本地完成，保障隐私安全
+
+## 安装说明
+
+1. 安装Python 3.7+
+2. 安装Ollama：https://ollama.com/download
+3. 下载本项目代码
+
+## 使用说明
+
+### 首次运行
+```bash
+cd scripts
+setup.bat  # 初始化项目结构
+start.bat  # 启动服务
